@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Next.js
+app/frontend/.next/
+app/frontend/out/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Playwright
+app/frontend/playwright-report/
+app/frontend/test-results/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
