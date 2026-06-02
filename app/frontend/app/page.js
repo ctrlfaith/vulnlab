@@ -186,6 +186,8 @@ export default function LoginPage() {
         localStorage.setItem('token', res.token)
         localStorage.setItem('user', JSON.stringify(res.user))
         document.cookie = `token=${res.token}; path=/; SameSite=Strict`
+        await new Promise(resolve => setTimeout(resolve, 100))
+        router.push('/notes')
         router.push('/notes')
       } else {
         setError(res.message || 'Something went wrong')
