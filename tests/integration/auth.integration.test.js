@@ -10,20 +10,20 @@ const uniqueSuffix = Date.now()
 const TEST_EMAIL = `integration_${uniqueSuffix}@test.com`
 const TEST_USERNAME = `integrationuser_${uniqueSuffix}`
 
-let createdUserId
+let createdauthorId
 
 beforeAll(async () => {
   const existing = await prisma.user.findUnique({ where: { email: TEST_EMAIL } })
   if (existing) {
-    await prisma.note.deleteMany({ where: { userId: existing.id } })
+    await prisma.note.deleteMany({ where: { authorId: existing.id } })
     await prisma.user.delete({ where: { id: existing.id } })
   }
 })
 
 afterAll(async () => {
-  if (createdUserId) {
-    await prisma.note.deleteMany({ where: { userId: createdUserId } })
-    await prisma.user.delete({ where: { id: createdUserId } })
+  if (createdauthorId) {
+    await prisma.note.deleteMany({ where: { authorId: createdauthorId } })
+    await prisma.user.delete({ where: { id: createdauthorId } })
   }
   await prisma.$disconnect()
 })
@@ -38,7 +38,7 @@ describe('Auth API', () => {
       expect(res.status).toBe(201)
       expect(res.body.token).toBeTruthy()
       expect(res.body.user.email).toBe(TEST_EMAIL)
-      createdUserId = res.body.user.id
+      createdauthorId = res.body.user.id
     })
 
     it('should return 400 if user already exists', async () => {

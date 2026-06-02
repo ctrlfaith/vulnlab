@@ -5,7 +5,7 @@ const { PrismaClient } = require('../../app/backend/node_modules/@prisma/client'
 const prisma = new PrismaClient()
 
 let token
-let userId
+let authorId
 
 const uniqueSuffix = Date.now()
 const TEST_EMAIL = `search_${uniqueSuffix}@test.com`
@@ -14,7 +14,7 @@ const TEST_USERNAME = `searchuser_${uniqueSuffix}`
 beforeAll(async () => {
   const existing = await prisma.user.findUnique({ where: { email: TEST_EMAIL } })
   if (existing) {
-    await prisma.note.deleteMany({ where: { userId: existing.id } })
+    await prisma.note.deleteMany({ where: { authorId: existing.id } })
     await prisma.user.delete({ where: { id: existing.id } })
   }
 
@@ -23,7 +23,7 @@ beforeAll(async () => {
     .send({ username: TEST_USERNAME, email: TEST_EMAIL, password: 'password123' })
 
   token = res.body.token
-  userId = res.body.user?.id
+  authorId = res.body.user?.id
 
   await request(app)
     .post('/notes')
@@ -37,9 +37,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  if (userId) {
-    await prisma.note.deleteMany({ where: { userId } })
-    await prisma.user.delete({ where: { id: userId } })
+  if (authorId) {
+    await prisma.note.deleteMany({ where: { authorId } })
+    await prisma.user.delete({ where: { id: authorId } })
   }
   await prisma.$disconnect()
 })
