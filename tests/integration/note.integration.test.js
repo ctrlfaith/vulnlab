@@ -138,4 +138,28 @@ describe('Notes API', () => {
       expect(res.body.content).toBe('Secret Content')
     })
   })
+
+  describe('⚠️ VULN-03 — Cross-Site Scripting (XSS)', () => {
+    it('should store and return XSS payload in note content without sanitization', async () => {
+      const xssPayload = '<img src=x onerror="alert(document.cookie)">'
+
+      const createRes = await request(app)
+        .post('/notes')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'XSS Test', content: xssPayload, isPublic: true })
+
+      expect(createRes.status).toBe(201)
+
+      const getRes = await request(app)
+        .get(`/notes/${createRes.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+
+      expect(getRes.status).toBe(200)
+      expect(getRes.body.content).toBe(xssPayload) 
+
+      await request(app)
+        .delete(`/notes/${createRes.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+    })
+  })
 })
