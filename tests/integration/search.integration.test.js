@@ -48,7 +48,7 @@ describe('Search API', () => {
   describe('GET /search', () => {
     it('should return matching notes', async () => {
       const res = await request(app)
-        .get('/search?q=Hello')
+        .get('/search?q=Public')
         .set('Authorization', `Bearer ${token}`)
 
       expect(res.status).toBe(200)
@@ -67,7 +67,7 @@ describe('Search API', () => {
 
     it('should return 401 without token', async () => {
       const res = await request(app)
-        .get('/search?q=hello')
+        .get('/search?q=Public')
 
       expect(res.status).toBe(401)
     })
