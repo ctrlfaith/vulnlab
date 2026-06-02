@@ -5,18 +5,26 @@ const { PrismaClient } = require('../../app/backend/node_modules/@prisma/client'
 const prisma = new PrismaClient()
 
 let token
+let userId
+
+const uniqueSuffix = Date.now()
+const TEST_EMAIL = `search_${uniqueSuffix}@test.com`
+const TEST_USERNAME = `searchuser_${uniqueSuffix}`
 
 beforeAll(async () => {
-  await prisma.note.deleteMany()
-  await prisma.user.deleteMany()
+  const existing = await prisma.user.findUnique({ where: { email: TEST_EMAIL } })
+  if (existing) {
+    await prisma.note.deleteMany({ where: { userId: existing.id } })
+    await prisma.user.delete({ where: { id: existing.id } })
+  }
 
   const res = await request(app)
     .post('/auth/register')
-    .send({ username: 'searchuser', email: 'search@test.com', password: 'password123' })
+    .send({ username: TEST_USERNAME, email: TEST_EMAIL, password: 'password123' })
 
   token = res.body.token
+  userId = res.body.user?.id
 
-  // สร้าง notes สำหรับ test
   await request(app)
     .post('/notes')
     .set('Authorization', `Bearer ${token}`)
@@ -29,8 +37,10 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await prisma.note.deleteMany()
-  await prisma.user.deleteMany()
+  if (userId) {
+    await prisma.note.deleteMany({ where: { userId } })
+    await prisma.user.delete({ where: { id: userId } })
+  }
   await prisma.$disconnect()
 })
 
@@ -65,12 +75,12 @@ describe('Search API', () => {
 
   describe('⚠️ SQL Injection Vulnerability', () => {
     it('should be vulnerable to SQL injection', async () => {
-  const res = await request(app)
-    .get("/search?q=%' OR '1'='1")
-    .set('Authorization', `Bearer ${token}`)
+      const res = await request(app)
+        .get("/search?q=%' OR '1'='1")
+        .set('Authorization', `Bearer ${token}`)
 
-  expect(res.status).toBe(200)
-  expect(res.body.length).toBeGreaterThan(0)
-})
+      expect(res.status).toBe(200)
+      expect(res.body.length).toBeGreaterThan(0)
+    })
   })
 })

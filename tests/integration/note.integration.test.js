@@ -8,21 +8,35 @@ let token
 let userId
 let noteId
 
+const uniqueSuffix = Date.now()
+const TEST_EMAIL = `note_${uniqueSuffix}@test.com`
+const TEST_USERNAME = `noteuser_${uniqueSuffix}`
+
 beforeAll(async () => {
-  await prisma.note.deleteMany()
-  await prisma.user.deleteMany()
+  const existing = await prisma.user.findUnique({ where: { email: TEST_EMAIL } })
+  if (existing) {
+    await prisma.note.deleteMany({ where: { userId: existing.id } })
+    await prisma.user.delete({ where: { id: existing.id } })
+  }
 
   const res = await request(app)
     .post('/auth/register')
-    .send({ username: 'noteuser', email: 'note@test.com', password: 'password123' })
+    .send({ username: TEST_USERNAME, email: TEST_EMAIL, password: 'password123' })
 
   token = res.body.token
   userId = res.body.user.id
 })
 
 afterAll(async () => {
-  await prisma.note.deleteMany()
-  await prisma.user.deleteMany()
+  const victim = await prisma.user.findUnique({ where: { email: `victim_${uniqueSuffix}@test.com` } })
+  if (victim) {
+    await prisma.note.deleteMany({ where: { userId: victim.id } })
+    await prisma.user.delete({ where: { id: victim.id } })
+  }
+  if (userId) {
+    await prisma.note.deleteMany({ where: { userId } })
+    await prisma.user.delete({ where: { id: userId } })
+  }
   await prisma.$disconnect()
 })
 
@@ -103,18 +117,19 @@ describe('Notes API', () => {
 
   describe('⚠️ IDOR Vulnerability', () => {
     it('should allow accessing other users note (IDOR)', async () => {
-      // สร้าง user 2
       const user2 = await request(app)
         .post('/auth/register')
-        .send({ username: 'victim', email: 'victim@test.com', password: 'password123' })
+        .send({
+          username: `victim_${uniqueSuffix}`,
+          email: `victim_${uniqueSuffix}@test.com`,
+          password: 'password123'
+        })
 
-      // สร้าง note ด้วย user 2
       const note = await request(app)
         .post('/notes')
         .set('Authorization', `Bearer ${user2.body.token}`)
         .send({ title: 'Private Note', content: 'Secret Content', isPublic: false })
 
-      // user 1 เข้าถึง note ของ user 2 ได้ (IDOR)
       const res = await request(app)
         .get(`/notes/${note.body.id}`)
         .set('Authorization', `Bearer ${token}`)

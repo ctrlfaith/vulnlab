@@ -6,14 +6,25 @@ const prisma = new PrismaClient({
   datasources: { db: { url: process.env.DATABASE_URL } }
 })
 
+const uniqueSuffix = Date.now()
+const TEST_EMAIL = `integration_${uniqueSuffix}@test.com`
+const TEST_USERNAME = `integrationuser_${uniqueSuffix}`
+
+let createdUserId
+
 beforeAll(async () => {
-  await prisma.note.deleteMany()
-  await prisma.user.deleteMany()
+  const existing = await prisma.user.findUnique({ where: { email: TEST_EMAIL } })
+  if (existing) {
+    await prisma.note.deleteMany({ where: { userId: existing.id } })
+    await prisma.user.delete({ where: { id: existing.id } })
+  }
 })
 
 afterAll(async () => {
-  await prisma.note.deleteMany()
-  await prisma.user.deleteMany()
+  if (createdUserId) {
+    await prisma.note.deleteMany({ where: { userId: createdUserId } })
+    await prisma.user.delete({ where: { id: createdUserId } })
+  }
   await prisma.$disconnect()
 })
 
@@ -22,17 +33,18 @@ describe('Auth API', () => {
     it('should register a new user', async () => {
       const res = await request(app)
         .post('/auth/register')
-        .send({ username: 'integrationuser', email: 'integration@test.com', password: 'password123' })
+        .send({ username: TEST_USERNAME, email: TEST_EMAIL, password: 'password123' })
 
       expect(res.status).toBe(201)
       expect(res.body.token).toBeTruthy()
-      expect(res.body.user.email).toBe('integration@test.com')
+      expect(res.body.user.email).toBe(TEST_EMAIL)
+      createdUserId = res.body.user.id
     })
 
     it('should return 400 if user already exists', async () => {
       const res = await request(app)
         .post('/auth/register')
-        .send({ username: 'integrationuser', email: 'integration@test.com', password: 'password123' })
+        .send({ username: TEST_USERNAME, email: TEST_EMAIL, password: 'password123' })
 
       expect(res.status).toBe(400)
       expect(res.body.message).toBe('User already exists')
@@ -43,7 +55,7 @@ describe('Auth API', () => {
     it('should login with correct credentials', async () => {
       const res = await request(app)
         .post('/auth/login')
-        .send({ email: 'integration@test.com', password: 'password123' })
+        .send({ email: TEST_EMAIL, password: 'password123' })
 
       expect(res.status).toBe(200)
       expect(res.body.token).toBeTruthy()
@@ -52,7 +64,7 @@ describe('Auth API', () => {
     it('should return 401 with wrong password', async () => {
       const res = await request(app)
         .post('/auth/login')
-        .send({ email: 'integration@test.com', password: 'wrongpassword' })
+        .send({ email: TEST_EMAIL, password: 'wrongpassword' })
 
       expect(res.status).toBe(401)
     })
